@@ -35,15 +35,13 @@ app.get('/api/notes/:id', (request, response, next) => {
     })
     .catch((error) => {
       next(error)
-      // console.log(error)
-      // response.status(400).send({ error: 'molformatted id' })
     })
 })
 
-app.post(`/api/notes`, (request, response) => {
+app.post(`/api/notes`, (request, response, next) => {
   const body = request.body
 
-  if (!body.content) {
+  if (body.content === undefined) {
     return response.status(400).json({ error: 'content missing' })
   }
 
@@ -53,9 +51,13 @@ app.post(`/api/notes`, (request, response) => {
     date: new Date()
   })
 
-  note.save().then((savedNote) => {
-    response.json(savedNote)
-  })
+  note
+    .save()
+    .then((savedNote) => savedNote.toJSON())
+    .then((savedAndFormattedNote) => response.json(savedAndFormattedNote))
+    .catch((err) => {
+      next(err)
+    })
 })
 
 app.delete(`/api/notes/:id`, (request, response, next) => {
@@ -89,10 +91,10 @@ const unknownEndpoint = (req, res, next) => {
 app.use(unknownEndpoint)
 
 const errorHandler = (error, req, res, next) => {
-  console.log(error.message, 'entro al controlador')
-
   if (error.name === 'CastError') {
     return res.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return res.status(400).json({ error: error.message })
   }
 
   next(error)
